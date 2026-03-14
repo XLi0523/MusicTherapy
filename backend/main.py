@@ -1,0 +1,44 @@
+from dataclasses import asdict
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+from infrastructure.openai_service import OpenAIService
+from infrastructure.spotify_service import SpotifyService
+from use_cases.generate_music_recommendation import GenerateMusicRecommendationUseCase
+
+load_dotenv()
+
+app = FastAPI()
+
+
+class RecommendRequest(BaseModel):
+    message: str
+
+
+@app.get("/")
+def root():
+    return {"message": "Music Therapy Backend is running"}
+
+
+@app.post("/recommend")
+def recommend_music(request: RecommendRequest):
+    try:
+        ai_service = OpenAIService()
+        music_service = SpotifyService()
+
+        use_case = GenerateMusicRecommendationUseCase(
+            ai_repository=ai_service,
+            music_repository=music_service
+        )
+
+        result = use_case.execute(request.message)
+
+        return asdict(result)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
