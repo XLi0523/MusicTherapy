@@ -1,5 +1,5 @@
-from domain.entities import Recommendation
-from domain.repositories.ai_repository import AIRepository
+from backend.domain.entities import Recommendation
+from backend.domain.repositories.ai_repository import AIRepository
 
 
 class OpenAIService(AIRepository):

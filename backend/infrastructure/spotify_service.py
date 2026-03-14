@@ -1,7 +1,7 @@
 from typing import List
 
-from domain.entities import Recommendation, Track
-from domain.repositories.music_repository import MusicRepository
+from backend.domain.entities import Recommendation, Track
+from backend.domain.repositories.music_repository import MusicRepository
 
 
 class SpotifyService(MusicRepository):

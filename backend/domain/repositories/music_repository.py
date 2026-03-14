@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from domain.entities import Recommendation, Track
+from backend.domain.entities import Recommendation, Track
 
 
 class MusicRepository(ABC):

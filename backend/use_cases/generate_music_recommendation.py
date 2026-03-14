@@ -1,4 +1,4 @@
-from domain.entities import MoodInput, Recommendation, Track, MusicTherapyResult
+from backend.domain.entities import MoodInput, Recommendation, Track, MusicTherapyResult
 
 
 class GenerateMusicRecommendationUseCase:
