@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from infrastructure.openai_service import OpenAIService
-from infrastructure.spotify_service import SpotifyService
-from use_cases.generate_music_recommendation import GenerateMusicRecommendationUseCase
+from backend.infrastructure.openai_service import OpenAIService
+from backend.infrastructure.spotify_service import SpotifyService
+from backend.use_cases.generate_music_recommendation import GenerateMusicRecommendationUseCase
 
 load_dotenv()
 

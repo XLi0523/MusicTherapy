@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from domain.entities import Recommendation
+from backend.domain.entities import Recommendation
 
 
 class AIRepository(ABC):
