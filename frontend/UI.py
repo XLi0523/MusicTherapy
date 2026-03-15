@@ -4,13 +4,8 @@ import webbrowser
 import requests
 from tkinter import messagebox
 
-
-# ===== MODIFICATION START: backend API connection settings =====
 BACKEND_URL = "http://127.0.0.1:8000"
-# ===== MODIFICATION END: backend API connection settings =====
 
-
-# ===== MODIFICATION START: backend API call =====
 def handle_chat(user_text: str):
     """
     Send the user's message to the backend API and return the JSON result.
@@ -22,8 +17,6 @@ def handle_chat(user_text: str):
     )
     response.raise_for_status()
     return response.json()
-# ===== MODIFICATION END: backend API call =====
-
 
 class MusicTherapyUI:
     def __init__(self):
@@ -35,7 +28,6 @@ class MusicTherapyUI:
         self.root.geometry("1180x760")
         self.root.minsize(980, 680)
 
-        # ===== VISUAL MODIFICATION START: improved readable palette =====
         self.window_fg = "#18181b"
         self.card_fg = "#232329"
         self.bot_bubble_fg = "#31313a"
@@ -46,21 +38,17 @@ class MusicTherapyUI:
         self.subcard_fg = "#2a2a33"
         self.track_button_fg = "#3b3b46"
         self.track_button_hover = "#52525f"
-        # ===== VISUAL MODIFICATION END: improved readable palette =====
 
         self.root.configure(fg_color=self.window_fg)
 
         self.build_ui()
 
     def build_ui(self):
-        # ===== LAYOUT MODIFICATION START: make middle row the main focus =====
-        # Give the chat area and session panel more room.
         self.root.grid_columnconfigure(0, weight=4)
         self.root.grid_columnconfigure(1, weight=2)
-        self.root.grid_rowconfigure(0, weight=0)   # header
-        self.root.grid_rowconfigure(1, weight=1)   # main middle area
-        self.root.grid_rowconfigure(2, weight=0)   # input area
-        # ===== LAYOUT MODIFICATION END: make middle row the main focus =====
+        self.root.grid_rowconfigure(0, weight=0)
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_rowconfigure(2, weight=0)
 
         self.header = ctk.CTkFrame(self.root, corner_radius=18, fg_color=self.card_fg)
         self.header.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="ew")
@@ -89,9 +77,6 @@ class MusicTherapyUI:
         )
         self.status_label.grid(row=2, column=0, padx=22, pady=(0, 18), sticky="w")
 
-        # ===== LAYOUT MODIFICATION START: larger, more central chat area =====
-        # ===== HORIZONTAL SCROLL MODIFICATION START =====
-        # Create a container frame for the chat area
         self.chat_container = ctk.CTkFrame(
             self.root,
             corner_radius=18,
@@ -116,14 +101,12 @@ class MusicTherapyUI:
             highlightthickness=0
         )
 
-        # Vertical scrollbar
         self.chat_scroll_y = ctk.CTkScrollbar(
             self.chat_container,
             orientation="vertical",
             command=self.chat_canvas.yview
         )
 
-        # Horizontal scrollbar
         self.chat_scroll_x = ctk.CTkScrollbar(
             self.chat_container,
             orientation="horizontal",
@@ -140,7 +123,6 @@ class MusicTherapyUI:
 
         self.chat_canvas.grid(row=0, column=0, sticky="nsew")
 
-        # Frame inside the canvas (this replaces the old chat_frame)
         self.chat_frame = ctk.CTkFrame(
             self.chat_canvas,
             fg_color=self.card_fg
@@ -148,21 +130,18 @@ class MusicTherapyUI:
 
         self.chat_frame.grid_columnconfigure(0, weight=1)
 
-        # Create window inside canvas
         self.chat_window = self.chat_canvas.create_window(
             (0, 0),
             window=self.chat_frame,
             anchor="nw"
         )
 
-        # Update scroll region when content changes
         def update_scroll_region(event):
             self.chat_canvas.configure(
                 scrollregion=self.chat_canvas.bbox("all")
             )
 
         self.chat_frame.bind("<Configure>", update_scroll_region)
-        # ===== LAYOUT MODIFICATION END: larger, more central chat area =====
 
         self.add_message(
             "MoodTune",
@@ -172,7 +151,6 @@ class MusicTherapyUI:
             bubble_type="bot"
         )
 
-        # ===== LAYOUT MODIFICATION START: make Current Session panel scrollable =====
         self.side_panel = ctk.CTkScrollableFrame(
             self.root,
             corner_radius=18,
@@ -180,18 +158,14 @@ class MusicTherapyUI:
         )
         self.side_panel.grid(row=1, column=1, padx=(10, 20), pady=10, sticky="nsew")
         self.side_panel.grid_columnconfigure(0, weight=1)
-        # ===== LAYOUT MODIFICATION END: make Current Session panel scrollable =====
 
-        # ===== VISUAL MODIFICATION START: stronger Current Session section =====
         self.session_title = ctk.CTkLabel(
             self.side_panel,
             text="Current Session",
             font=ctk.CTkFont(size=22, weight="bold")
         )
         self.session_title.grid(row=0, column=0, padx=18, pady=(18, 12), sticky="w")
-        # ===== VISUAL MODIFICATION END: stronger Current Session section =====
 
-        # ===== VISUAL MODIFICATION START: nicer session summary card =====
         self.mood_card = ctk.CTkFrame(
             self.side_panel,
             corner_radius=16,
@@ -215,9 +189,7 @@ class MusicTherapyUI:
             wraplength=280
         )
         self.song_label.grid(row=1, column=0, padx=16, pady=(0, 14), sticky="w")
-        # ===== VISUAL MODIFICATION END: nicer session summary card =====
 
-        # ===== VISUAL MODIFICATION START: session stats / details card =====
         self.details_card = ctk.CTkFrame(
             self.side_panel,
             corner_radius=16,
@@ -241,9 +213,7 @@ class MusicTherapyUI:
             font=ctk.CTkFont(size=13)
         )
         self.details_text.grid(row=1, column=0, padx=16, pady=(0, 14), sticky="w")
-        # ===== VISUAL MODIFICATION END: session stats / details card =====
 
-        # ===== VISUAL MODIFICATION START: simplified helpful info card =====
         self.instructions_card = ctk.CTkFrame(
             self.side_panel,
             corner_radius=16,
@@ -267,9 +237,7 @@ class MusicTherapyUI:
             font=ctk.CTkFont(size=13)
         )
         self.instructions_text.grid(row=1, column=0, padx=16, pady=(0, 14), sticky="w")
-        # ===== VISUAL MODIFICATION END: simplified helpful info card =====
 
-        # ===== LAYOUT MODIFICATION START: smaller bottom input area =====
         self.bottom_frame = ctk.CTkFrame(self.root, corner_radius=18, fg_color=self.card_fg)
         self.bottom_frame.grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
         self.bottom_frame.grid_columnconfigure(0, weight=1)
@@ -282,7 +250,6 @@ class MusicTherapyUI:
         )
         self.input_label.grid(row=0, column=0, padx=16, pady=(12, 0), sticky="w")
 
-        # Smaller textbox so it doesn't crowd the middle area
         self.input_box = ctk.CTkTextbox(
             self.bottom_frame,
             height=70,
@@ -290,7 +257,6 @@ class MusicTherapyUI:
             fg_color="#2b2b34"
         )
         self.input_box.grid(row=1, column=0, columnspan=2, padx=16, pady=(8, 10), sticky="ew")
-        # ===== LAYOUT MODIFICATION END: smaller bottom input area =====
 
         self.send_button = ctk.CTkButton(
             self.bottom_frame,
@@ -426,7 +392,6 @@ class MusicTherapyUI:
         self.mood_label.configure(text=f"Mood: {mood_summary}")
         self.song_label.configure(text=f"Top song: {song_text}")
 
-        # ===== VISUAL MODIFICATION START: richer details in Current Session =====
         self.details_text.configure(
             text=(
                 f"Latest mood analysis:\n{mood_summary}\n\n"
@@ -434,7 +399,6 @@ class MusicTherapyUI:
                 f"You can scroll this panel if more content appears."
             )
         )
-        # ===== VISUAL MODIFICATION END: richer details in Current Session =====
 
     def set_status(self, text: str):
         self.status_label.configure(text=f"Status: {text}")
