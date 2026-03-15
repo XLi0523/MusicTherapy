@@ -1,51 +1,75 @@
+import json
+import os
+
+from openai import OpenAI
+
 from backend.domain.entities import Recommendation
 from backend.domain.repositories.ai_repository import AIRepository
 
 
 class OpenAIService(AIRepository):
-    def analyze_mood(self, mood_text: str) -> Recommendation:
-        text = mood_text.lower().strip()
-
-        if any(word in text for word in ["anxious", "anxiety", "stressed", "stress", "overwhelmed", "nervous"]):
-            return Recommendation(
-                mood_summary="anxious and overwhelmed",
-                response_text="I found some calming music that may help you relax and slow down.",
-                search_keywords=["calm piano", "ambient relax", "lofi focus"],
-                genres=["ambient", "lofi", "piano"],
-                artists=["Ludovico Einaudi"]
-            )
-
-        if any(word in text for word in ["sad", "down", "depressed", "lonely", "heartbroken", "upset", "emo"]):
-            return Recommendation(
-                mood_summary="sad and emotionally tired",
-                response_text="I found some gentle music that may help you feel comforted and supported.",
-                search_keywords=["soft comfort music", "gentle indie calm", "healing piano"],
-                genres=["indie", "acoustic", "piano"],
-                artists=["Phoebe Bridgers"]
-            )
-
-        if any(word in text for word in ["happy", "excited", "great", "good", "energetic", "motivated"]):
-            return Recommendation(
-                mood_summary="happy and energetic",
-                response_text="I found some uplifting tracks that match your energy.",
-                search_keywords=["upbeat pop", "happy indie", "feel good songs"],
-                genres=["pop", "indie pop"],
-                artists=["M83"]
-            )
-
-        if any(word in text for word in ["tired", "sleepy", "exhausted", "drained", "burned out", "burnt out"]):
-            return Recommendation(
-                mood_summary="tired and drained",
-                response_text="I found some soft and restful music that may help you unwind.",
-                search_keywords=["sleep calm", "soft ambient night", "gentle piano rest"],
-                genres=["ambient", "sleep", "piano"],
-                artists=["Max Richter"]
-            )
-
-        return Recommendation(
-            mood_summary="neutral mood",
-            response_text="I found some balanced music for your current mood.",
-            search_keywords=["chill music", "easy listening", "soft indie"],
-            genres=["indie", "chill"],
-            artists=[]
+    def __init__(self):
+        self.client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY", "test"),
+            base_url="https://vjioo4r1vyvcozuj.us-east-2.aws.endpoints.huggingface.cloud/v1",
         )
+        self.model = "openai/gpt-oss-120b"
+
+    def analyze_mood(self, mood_text: str) -> Recommendation:
+        system_prompt = """
+You are a music therapy recommendation assistant.
+
+Analyze the user's emotional state and return ONLY valid JSON.
+Do not include markdown, code fences, or extra text.
+
+Return exactly this JSON structure:
+{
+  "mood_summary": "string",
+  "response_text": "string",
+  "search_keywords": ["string", "string", "string"],
+  "genres": ["string", "string"],
+  "artists": ["string", "string"]
+}
+
+Rules:
+- response_text should be short, warm, and supportive
+- search_keywords should be short phrases good for Spotify track search
+- prefer real searchable music styles and moods
+- keep genres and artists relevant
+- if unsure, still return reasonable values
+"""
+
+        user_prompt = f"User mood input: {mood_text}"
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt.strip()},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=300,
+            temperature=0.7,
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        try:
+            data = json.loads(content)
+            return Recommendation(
+                mood_summary=data.get("mood_summary", "neutral mood"),
+                response_text=data.get(
+                    "response_text",
+                    "I found some music that may fit how you're feeling."
+                ),
+                search_keywords=data.get("search_keywords", ["chill music", "soft indie"]),
+                genres=data.get("genres", []),
+                artists=data.get("artists", []),
+            )
+        except (json.JSONDecodeError, TypeError):
+            return Recommendation(
+                mood_summary="neutral mood",
+                response_text="I found some music that may fit how you're feeling.",
+                search_keywords=["chill music", "soft indie", "calm playlist"],
+                genres=["indie", "chill"],
+                artists=[],
+            )
