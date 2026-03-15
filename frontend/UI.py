@@ -114,7 +114,7 @@ class MusicTherapyUI:
         self.add_message(
             "MoodTune",
             "Hi! I’m here to help you process your feelings through music.\n\n"
-            "Tell me how you’re feeling, and I’ll open a song that matches your mood.",
+            "Tell me how you’re feeling, and I’ll suggest tracks that matches your mood.",
             is_user=False,
             bubble_type="bot"
         )
@@ -282,6 +282,51 @@ class MusicTherapyUI:
         )
         message.grid(row=0, column=0, padx=16, pady=12)
     # ===== MODIFICATION END: styled message bubbles =====
+    # ===== NEW MODIFICATION START: add clickable buttons for returned tracks =====
+    def add_track_buttons(self, tracks: list):
+        """
+        Create one clickable button per track.
+        Clicking a button opens that track in Spotify.
+        """
+        if not tracks:
+            return
+
+        outer = ctk.CTkFrame(self.chat_frame, fg_color="transparent")
+        outer.grid(sticky="ew", padx=12, pady=(0, 10))
+        outer.grid_columnconfigure(0, weight=1)
+
+        container = ctk.CTkFrame(
+            outer,
+            corner_radius=18,
+            fg_color=self.bot_bubble_fg
+        )
+        container.grid(row=0, column=0, sticky="w", padx=12)
+
+        tracks_label = ctk.CTkLabel(
+            container,
+            text="Suggested Tracks",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="white"
+        )
+        tracks_label.grid(row=0, column=0, padx=14, pady=(12, 8), sticky="w")
+
+        for index, track in enumerate(tracks, start=1):
+            title = track.get("title", "Unknown title")
+            artist = track.get("artist", "Unknown artist")
+            spotify_url = track.get("spotify_url")
+
+            track_button = ctk.CTkButton(
+                container,
+                text=f"{index}. {title} — {artist}",
+                width=440,
+                anchor="w",
+                corner_radius=12,
+                fg_color="#3b3b46",
+                hover_color="#4b4b58",
+                command=lambda url=spotify_url: self.open_song(url)
+            )
+            track_button.grid(row=index, column=0, padx=14, pady=6, sticky="w")
+    # ===== NEW MODIFICATION END: add clickable buttons for returned tracks =====
 
     def open_song(self, url: str | None):
         if not url:
@@ -337,13 +382,11 @@ class MusicTherapyUI:
 
                 if tracks:
                     first_track = tracks[0]
-                    song_url = first_track.get("spotify_url")
                     song_title = first_track.get("title", "Unknown title")
                     song_artist = first_track.get("artist", "Unknown artist")
                     song_text = f"{song_title} — {song_artist}"
                     bot_text += f"\n\nRecommended song: {song_text}"
                 else:
-                    song_url = None
                     song_text = "No song found"
 
                 # ===== MODIFICATION START: update UI after backend response =====
@@ -354,21 +397,9 @@ class MusicTherapyUI:
                 self.root.after(0, lambda: self.set_status("Ready"))
                 # ===== MODIFICATION END: update UI after backend response =====
 
-                if song_url:
-                    # ===== MODIFICATION START: system message before opening Spotify =====
-                    self.root.after(
-                        0,
-                        lambda: self.add_message(
-                            "System",
-                            "Opening your recommended song in Spotify...",
-                            is_user=False,
-                            bubble_type="system"
-                        )
-                    )
-                    self.root.after(0, lambda: self.set_status("Opening Spotify..."))
-                    # ===== MODIFICATION END: system message before opening Spotify =====
-
-                    self.root.after(0, lambda: self.open_song(song_url))
+                # ===== NEW MODIFICATION START: show track buttons instead of auto-opening one song =====
+                if tracks:
+                    self.root.after(0, lambda: self.add_track_buttons(tracks))
                 else:
                     self.root.after(
                         0,
@@ -377,7 +408,7 @@ class MusicTherapyUI:
                             "The backend returned no Spotify tracks."
                         )
                     )
-                    self.root.after(0, lambda: self.set_status("Ready"))
+                # ===== NEW MODIFICATION END: show track buttons instead of auto-opening one song =====
 
             except requests.exceptions.ConnectionError:
                 # ===== MODIFICATION START: backend not running error =====
