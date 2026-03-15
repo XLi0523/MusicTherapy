@@ -3,12 +3,14 @@ from dataclasses import asdict
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from pathlib import Path
 
 from backend.infrastructure.openai_service import OpenAIService
 from backend.infrastructure.spotify_service import SpotifyService
 from backend.use_cases.generate_music_recommendation import GenerateMusicRecommendationUseCase
 
-load_dotenv()
+ROOT_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT_DIR / ".env")
 
 app = FastAPI()
 
