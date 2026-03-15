@@ -6,35 +6,23 @@ from tkinter import messagebox
 
 
 # ===== MODIFICATION START: backend API connection settings =====
-# This is the URL of your teammate's FastAPI backend.
-# Change the port if your teammate runs it on a different one.
 BACKEND_URL = "http://127.0.0.1:8000"
 # ===== MODIFICATION END: backend API connection settings =====
 
 
-# ===== MODIFICATION START: replace fake handle_chat with real API call =====
+# ===== MODIFICATION START: backend API call =====
 def handle_chat(user_text: str):
     """
     Send the user's message to the backend API and return the JSON result.
-    The backend returns a dictionary like:
-    {
-        "mood_input": {...},
-        "recommendation": {...},
-        "tracks": [...]
-    }
     """
     response = requests.post(
         f"{BACKEND_URL}/recommend",
         json={"message": user_text},
         timeout=15
     )
-
-    # If the backend returns an error status, raise an exception
     response.raise_for_status()
-
-    # Convert the backend JSON response into a Python dictionary
     return response.json()
-# ===== MODIFICATION END: replace fake handle_chat with real API call =====
+# ===== MODIFICATION END: backend API call =====
 
 
 class MusicTherapyUI:
@@ -43,35 +31,37 @@ class MusicTherapyUI:
         ctk.set_default_color_theme("blue")
 
         self.root = ctk.CTk()
-
-        # ===== MODIFICATION START: stronger branding and window size =====
         self.root.title("MoodTune")
-        self.root.geometry("1100x720")
-        self.root.minsize(900, 650)
-        # ===== MODIFICATION END: stronger branding and window size =====
+        self.root.geometry("1180x760")
+        self.root.minsize(980, 680)
 
-        # ===== MODIFICATION START: neutral dark palette for readability =====
+        # ===== VISUAL MODIFICATION START: improved readable palette =====
         self.window_fg = "#18181b"
         self.card_fg = "#232329"
-        self.bot_bubble_fg = "#2f2f36"
+        self.bot_bubble_fg = "#31313a"
         self.user_bubble_fg = "#4f46e5"
-        self.system_bubble_fg = "#334155"
+        self.system_bubble_fg = "#475569"
         self.secondary_text = "#cbd5e1"
         self.info_card_fg = "#202028"
-        # ===== MODIFICATION END: neutral dark palette for readability =====
+        self.subcard_fg = "#2a2a33"
+        self.track_button_fg = "#3b3b46"
+        self.track_button_hover = "#52525f"
+        # ===== VISUAL MODIFICATION END: improved readable palette =====
 
         self.root.configure(fg_color=self.window_fg)
 
         self.build_ui()
 
     def build_ui(self):
-        # ===== MODIFICATION START: two-column layout =====
-        self.root.grid_columnconfigure(0, weight=3)
-        self.root.grid_columnconfigure(1, weight=1)
-        self.root.grid_rowconfigure(1, weight=1)
-        # ===== MODIFICATION END: two-column layout =====
+        # ===== LAYOUT MODIFICATION START: make middle row the main focus =====
+        # Give the chat area and session panel more room.
+        self.root.grid_columnconfigure(0, weight=4)
+        self.root.grid_columnconfigure(1, weight=2)
+        self.root.grid_rowconfigure(0, weight=0)   # header
+        self.root.grid_rowconfigure(1, weight=1)   # main middle area
+        self.root.grid_rowconfigure(2, weight=0)   # input area
+        # ===== LAYOUT MODIFICATION END: make middle row the main focus =====
 
-        # ===== MODIFICATION START: improved header =====
         self.header = ctk.CTkFrame(self.root, corner_radius=18, fg_color=self.card_fg)
         self.header.grid(row=0, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="ew")
         self.header.grid_columnconfigure(0, weight=1)
@@ -85,7 +75,7 @@ class MusicTherapyUI:
 
         self.subtitle_label = ctk.CTkLabel(
             self.header,
-            text="Talk about how you feel and get music that meets you there.",
+            text="Share your mood. Find music that fits.",
             font=ctk.CTkFont(size=15),
             text_color=self.secondary_text
         )
@@ -98,82 +88,188 @@ class MusicTherapyUI:
             text_color="#a1a1aa"
         )
         self.status_label.grid(row=2, column=0, padx=22, pady=(0, 18), sticky="w")
-        # ===== MODIFICATION END: improved header =====
 
-        # ===== MODIFICATION START: styled chat area =====
-        self.chat_frame = ctk.CTkScrollableFrame(
+        # ===== LAYOUT MODIFICATION START: larger, more central chat area =====
+        # ===== HORIZONTAL SCROLL MODIFICATION START =====
+        # Create a container frame for the chat area
+        self.chat_container = ctk.CTkFrame(
             self.root,
             corner_radius=18,
             fg_color=self.card_fg
         )
-        self.chat_frame.grid(row=1, column=0, padx=(20, 10), pady=10, sticky="nsew")
-        self.chat_frame.grid_columnconfigure(0, weight=1)
-        # ===== MODIFICATION END: styled chat area =====
 
-        # ===== MODIFICATION START: welcome state =====
+        self.chat_container.grid(
+            row=1,
+            column=0,
+            padx=(20, 10),
+            pady=10,
+            sticky="nsew"
+        )
+
+        self.chat_container.grid_rowconfigure(0, weight=1)
+        self.chat_container.grid_columnconfigure(0, weight=1)
+
+        # Create canvas
+        self.chat_canvas = ctk.CTkCanvas(
+            self.chat_container,
+            bg=self.card_fg,
+            highlightthickness=0
+        )
+
+        # Vertical scrollbar
+        self.chat_scroll_y = ctk.CTkScrollbar(
+            self.chat_container,
+            orientation="vertical",
+            command=self.chat_canvas.yview
+        )
+
+        # Horizontal scrollbar
+        self.chat_scroll_x = ctk.CTkScrollbar(
+            self.chat_container,
+            orientation="horizontal",
+            command=self.chat_canvas.xview
+        )
+
+        self.chat_canvas.configure(
+            yscrollcommand=self.chat_scroll_y.set,
+            xscrollcommand=self.chat_scroll_x.set
+        )
+
+        self.chat_scroll_y.grid(row=0, column=1, sticky="ns")
+        self.chat_scroll_x.grid(row=1, column=0, sticky="ew")
+
+        self.chat_canvas.grid(row=0, column=0, sticky="nsew")
+
+        # Frame inside the canvas (this replaces the old chat_frame)
+        self.chat_frame = ctk.CTkFrame(
+            self.chat_canvas,
+            fg_color=self.card_fg
+        )
+
+        self.chat_frame.grid_columnconfigure(0, weight=1)
+
+        # Create window inside canvas
+        self.chat_window = self.chat_canvas.create_window(
+            (0, 0),
+            window=self.chat_frame,
+            anchor="nw"
+        )
+
+        # Update scroll region when content changes
+        def update_scroll_region(event):
+            self.chat_canvas.configure(
+                scrollregion=self.chat_canvas.bbox("all")
+            )
+
+        self.chat_frame.bind("<Configure>", update_scroll_region)
+        # ===== LAYOUT MODIFICATION END: larger, more central chat area =====
+
         self.add_message(
             "MoodTune",
             "Hi! I’m here to help you process your feelings through music.\n\n"
-            "Tell me how you’re feeling, and I’ll suggest tracks that matches your mood.",
+            "Tell me how you’re feeling, and I’ll suggest tracks that match your mood.",
             is_user=False,
             bubble_type="bot"
         )
-        # ===== MODIFICATION END: welcome state =====
 
-        # ===== MODIFICATION START: side panel =====
-        self.side_panel = ctk.CTkFrame(self.root, corner_radius=18, fg_color=self.info_card_fg)
+        # ===== LAYOUT MODIFICATION START: make Current Session panel scrollable =====
+        self.side_panel = ctk.CTkScrollableFrame(
+            self.root,
+            corner_radius=18,
+            fg_color=self.info_card_fg
+        )
         self.side_panel.grid(row=1, column=1, padx=(10, 20), pady=10, sticky="nsew")
         self.side_panel.grid_columnconfigure(0, weight=1)
+        # ===== LAYOUT MODIFICATION END: make Current Session panel scrollable =====
 
+        # ===== VISUAL MODIFICATION START: stronger Current Session section =====
         self.session_title = ctk.CTkLabel(
             self.side_panel,
             text="Current Session",
-            font=ctk.CTkFont(size=20, weight="bold")
+            font=ctk.CTkFont(size=22, weight="bold")
         )
-        self.session_title.grid(row=0, column=0, padx=18, pady=(18, 10), sticky="w")
+        self.session_title.grid(row=0, column=0, padx=18, pady=(18, 12), sticky="w")
+        # ===== VISUAL MODIFICATION END: stronger Current Session section =====
 
-        self.mood_card = ctk.CTkFrame(self.side_panel, corner_radius=14, fg_color="#2a2a33")
+        # ===== VISUAL MODIFICATION START: nicer session summary card =====
+        self.mood_card = ctk.CTkFrame(
+            self.side_panel,
+            corner_radius=16,
+            fg_color=self.subcard_fg
+        )
         self.mood_card.grid(row=1, column=0, padx=18, pady=8, sticky="ew")
 
         self.mood_label = ctk.CTkLabel(
             self.mood_card,
             text="Mood: Not analyzed yet",
-            font=ctk.CTkFont(size=14, weight="bold")
+            font=ctk.CTkFont(size=15, weight="bold")
         )
-        self.mood_label.grid(row=0, column=0, padx=14, pady=(12, 4), sticky="w")
+        self.mood_label.grid(row=0, column=0, padx=16, pady=(14, 6), sticky="w")
 
         self.song_label = ctk.CTkLabel(
             self.mood_card,
-            text="Song: None yet",
+            text="Top song: None yet",
             font=ctk.CTkFont(size=13),
             text_color=self.secondary_text,
             justify="left",
-            wraplength=240
+            wraplength=280
         )
-        self.song_label.grid(row=1, column=0, padx=14, pady=(0, 12), sticky="w")
+        self.song_label.grid(row=1, column=0, padx=16, pady=(0, 14), sticky="w")
+        # ===== VISUAL MODIFICATION END: nicer session summary card =====
 
-        self.instructions_card = ctk.CTkFrame(self.side_panel, corner_radius=14, fg_color="#2a2a33")
-        self.instructions_card.grid(row=2, column=0, padx=18, pady=8, sticky="ew")
+        # ===== VISUAL MODIFICATION START: session stats / details card =====
+        self.details_card = ctk.CTkFrame(
+            self.side_panel,
+            corner_radius=16,
+            fg_color=self.subcard_fg
+        )
+        self.details_card.grid(row=2, column=0, padx=18, pady=8, sticky="ew")
+
+        self.details_title = ctk.CTkLabel(
+            self.details_card,
+            text="Session Details",
+            font=ctk.CTkFont(size=15, weight="bold")
+        )
+        self.details_title.grid(row=0, column=0, padx=16, pady=(14, 8), sticky="w")
+
+        self.details_text = ctk.CTkLabel(
+            self.details_card,
+            text="No recommendations yet.\nYour most recent mood and top track will appear here.",
+            justify="left",
+            wraplength=280,
+            text_color=self.secondary_text,
+            font=ctk.CTkFont(size=13)
+        )
+        self.details_text.grid(row=1, column=0, padx=16, pady=(0, 14), sticky="w")
+        # ===== VISUAL MODIFICATION END: session stats / details card =====
+
+        # ===== VISUAL MODIFICATION START: simplified helpful info card =====
+        self.instructions_card = ctk.CTkFrame(
+            self.side_panel,
+            corner_radius=16,
+            fg_color=self.subcard_fg
+        )
+        self.instructions_card.grid(row=3, column=0, padx=18, pady=8, sticky="ew")
 
         self.instructions_title = ctk.CTkLabel(
             self.instructions_card,
             text="How it works",
-            font=ctk.CTkFont(size=14, weight="bold")
+            font=ctk.CTkFont(size=15, weight="bold")
         )
-        self.instructions_title.grid(row=0, column=0, padx=14, pady=(12, 6), sticky="w")
+        self.instructions_title.grid(row=0, column=0, padx=16, pady=(14, 8), sticky="w")
 
         self.instructions_text = ctk.CTkLabel(
             self.instructions_card,
-            text="1. Share how you feel\n2. MoodTune analyzes your mood\n3. A matching Spotify song opens",
+            text="1. Share how you feel\n2. MoodTune analyzes your mood\n3. Click any suggested track to open it in Spotify",
             justify="left",
-            wraplength=240,
+            wraplength=280,
             text_color=self.secondary_text,
             font=ctk.CTkFont(size=13)
         )
-        self.instructions_text.grid(row=1, column=0, padx=14, pady=(0, 12), sticky="w")
-        # ===== MODIFICATION END: side panel =====
+        self.instructions_text.grid(row=1, column=0, padx=16, pady=(0, 14), sticky="w")
+        # ===== VISUAL MODIFICATION END: simplified helpful info card =====
 
-        # ===== MODIFICATION START: improved bottom input area =====
+        # ===== LAYOUT MODIFICATION START: smaller bottom input area =====
         self.bottom_frame = ctk.CTkFrame(self.root, corner_radius=18, fg_color=self.card_fg)
         self.bottom_frame.grid(row=2, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
         self.bottom_frame.grid_columnconfigure(0, weight=1)
@@ -181,50 +277,44 @@ class MusicTherapyUI:
 
         self.input_label = ctk.CTkLabel(
             self.bottom_frame,
-            text="How are you feeling right now?",
+            text="How are you feeling?",
             font=ctk.CTkFont(size=13, weight="bold")
         )
-        self.input_label.grid(row=0, column=0, padx=16, pady=(14, 0), sticky="w")
+        self.input_label.grid(row=0, column=0, padx=16, pady=(12, 0), sticky="w")
 
+        # Smaller textbox so it doesn't crowd the middle area
         self.input_box = ctk.CTkTextbox(
             self.bottom_frame,
-            height=95,
+            height=70,
             corner_radius=14,
             fg_color="#2b2b34"
         )
-        self.input_box.grid(row=1, column=0, columnspan=2, padx=16, pady=(8, 12), sticky="ew")
-        # ===== MODIFICATION END: improved bottom input area =====
+        self.input_box.grid(row=1, column=0, columnspan=2, padx=16, pady=(8, 10), sticky="ew")
+        # ===== LAYOUT MODIFICATION END: smaller bottom input area =====
 
-        # ===== MODIFICATION START: better send button =====
         self.send_button = ctk.CTkButton(
             self.bottom_frame,
             text="Find My Music",
             width=155,
-            height=44,
+            height=42,
             corner_radius=16,
             font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="#4f46e5",
             hover_color="#4338ca",
             command=self.send_message
         )
-        self.send_button.grid(row=2, column=1, padx=16, pady=(0, 16), sticky="e")
-        # ===== MODIFICATION END: better send button =====
+        self.send_button.grid(row=2, column=1, padx=16, pady=(0, 14), sticky="e")
 
-    # ===== MODIFICATION START: simpler neutral mood colors =====
-    # Since you said the previous shifting colors were hard to read,
-    # this returns one calm readable palette for all moods.
     def mood_colors(self, mood_summary: str):
         return {
             "window": "#18181b",
             "card": "#232329",
-            "bot": "#2f2f36",
+            "bot": "#31313a",
             "user": "#4f46e5",
-            "system": "#334155",
+            "system": "#475569",
             "info": "#202028"
         }
-    # ===== MODIFICATION END: simpler neutral mood colors =====
 
-    # ===== MODIFICATION START: apply colors to the main widgets =====
     def apply_mood_theme(self, mood_summary: str):
         colors = self.mood_colors(mood_summary)
 
@@ -240,12 +330,10 @@ class MusicTherapyUI:
         self.chat_frame.configure(fg_color=self.card_fg)
         self.bottom_frame.configure(fg_color=self.card_fg)
         self.side_panel.configure(fg_color=self.info_card_fg)
-    # ===== MODIFICATION END: apply colors to the main widgets =====
 
-    # ===== MODIFICATION START: styled message bubbles =====
     def add_message(self, sender: str, text: str, is_user: bool, bubble_type="bot"):
         outer = ctk.CTkFrame(self.chat_frame, fg_color="transparent")
-        outer.grid(sticky="ew", padx=12, pady=10)
+        outer.grid(sticky="ew", padx=12, pady=12)
         outer.grid_columnconfigure(0, weight=1)
 
         anchor = "e" if is_user else "w"
@@ -280,9 +368,8 @@ class MusicTherapyUI:
             wraplength=620,
             font=ctk.CTkFont(size=14)
         )
-        message.grid(row=0, column=0, padx=16, pady=12)
-    # ===== MODIFICATION END: styled message bubbles =====
-    # ===== NEW MODIFICATION START: add clickable buttons for returned tracks =====
+        message.grid(row=0, column=0, padx=18, pady=14)
+
     def add_track_buttons(self, tracks: list):
         """
         Create one clickable button per track.
@@ -292,7 +379,7 @@ class MusicTherapyUI:
             return
 
         outer = ctk.CTkFrame(self.chat_frame, fg_color="transparent")
-        outer.grid(sticky="ew", padx=12, pady=(0, 10))
+        outer.grid(sticky="ew", padx=12, pady=(0, 12))
         outer.grid_columnconfigure(0, weight=1)
 
         container = ctk.CTkFrame(
@@ -317,16 +404,17 @@ class MusicTherapyUI:
 
             track_button = ctk.CTkButton(
                 container,
-                text=f"{index}. {title} — {artist}",
+                text=f"🎵  {index}. {title} — {artist}",
                 width=440,
+                height=42,
                 anchor="w",
-                corner_radius=12,
-                fg_color="#3b3b46",
-                hover_color="#4b4b58",
+                corner_radius=14,
+                fg_color=self.track_button_fg,
+                hover_color=self.track_button_hover,
+                font=ctk.CTkFont(size=13),
                 command=lambda url=spotify_url: self.open_song(url)
             )
-            track_button.grid(row=index, column=0, padx=14, pady=6, sticky="w")
-    # ===== NEW MODIFICATION END: add clickable buttons for returned tracks =====
+            track_button.grid(row=index, column=0, padx=14, pady=8, sticky="w")
 
     def open_song(self, url: str | None):
         if not url:
@@ -334,16 +422,22 @@ class MusicTherapyUI:
             return
         webbrowser.open(url)
 
-    # ===== MODIFICATION START: helper to update side session info =====
     def update_session_panel(self, mood_summary: str, song_text: str):
         self.mood_label.configure(text=f"Mood: {mood_summary}")
-        self.song_label.configure(text=f"Song: {song_text}")
-    # ===== MODIFICATION END: helper to update side session info =====
+        self.song_label.configure(text=f"Top song: {song_text}")
 
-    # ===== MODIFICATION START: helper to update status label =====
+        # ===== VISUAL MODIFICATION START: richer details in Current Session =====
+        self.details_text.configure(
+            text=(
+                f"Latest mood analysis:\n{mood_summary}\n\n"
+                f"Top recommendation:\n{song_text}\n\n"
+                f"You can scroll this panel if more content appears."
+            )
+        )
+        # ===== VISUAL MODIFICATION END: richer details in Current Session =====
+
     def set_status(self, text: str):
         self.status_label.configure(text=f"Status: {text}")
-    # ===== MODIFICATION END: helper to update status label =====
 
     def send_message(self):
         user_text = self.input_box.get("1.0", "end").strip()
@@ -352,31 +446,21 @@ class MusicTherapyUI:
             messagebox.showwarning("Input missing", "Please type how you feel.")
             return
 
-        # ===== MODIFICATION START: styled user message =====
         self.add_message("You", user_text, is_user=True, bubble_type="user")
-        # ===== MODIFICATION END: styled user message =====
-
         self.input_box.delete("1.0", "end")
 
-        # ===== MODIFICATION START: better loading feedback =====
         self.send_button.configure(state="disabled", text="Finding...")
         self.set_status("Analyzing your mood...")
-        # ===== MODIFICATION END: better loading feedback =====
 
         def worker():
             try:
-                # ===== MODIFICATION START: call real backend API =====
                 result = handle_chat(user_text)
-                # result is a dictionary because FastAPI returned JSON
-                # ===== MODIFICATION END: call real backend API =====
 
-                # ===== MODIFICATION START: read backend JSON structure =====
                 recommendation = result.get("recommendation", {})
                 tracks = result.get("tracks", [])
 
                 reply = recommendation.get("response_text", "No reply received.")
                 mood_summary = recommendation.get("mood_summary", "Unknown mood")
-                # ===== MODIFICATION END: read backend JSON structure =====
 
                 bot_text = f"{reply}\n\nMood summary: {mood_summary}"
 
@@ -385,19 +469,16 @@ class MusicTherapyUI:
                     song_title = first_track.get("title", "Unknown title")
                     song_artist = first_track.get("artist", "Unknown artist")
                     song_text = f"{song_title} — {song_artist}"
-                    bot_text += f"\n\nRecommended song: {song_text}"
+                    bot_text += f"\n\nTop recommendation: {song_text}"
                 else:
                     song_text = "No song found"
 
-                # ===== MODIFICATION START: update UI after backend response =====
                 self.root.after(0, lambda: self.apply_mood_theme(mood_summary))
                 self.root.after(0, lambda: self.update_session_panel(mood_summary, song_text))
                 self.root.after(0, lambda: self.add_message("MoodTune", bot_text, is_user=False, bubble_type="bot"))
                 self.root.after(0, lambda: self.send_button.configure(state="normal", text="Find My Music"))
                 self.root.after(0, lambda: self.set_status("Ready"))
-                # ===== MODIFICATION END: update UI after backend response =====
 
-                # ===== NEW MODIFICATION START: show track buttons instead of auto-opening one song =====
                 if tracks:
                     self.root.after(0, lambda: self.add_track_buttons(tracks))
                 else:
@@ -408,10 +489,8 @@ class MusicTherapyUI:
                             "The backend returned no Spotify tracks."
                         )
                     )
-                # ===== NEW MODIFICATION END: show track buttons instead of auto-opening one song =====
 
             except requests.exceptions.ConnectionError:
-                # ===== MODIFICATION START: backend not running error =====
                 self.root.after(
                     0,
                     lambda: messagebox.showerror(
@@ -422,14 +501,11 @@ class MusicTherapyUI:
                 )
                 self.root.after(0, lambda: self.send_button.configure(state="normal", text="Find My Music"))
                 self.root.after(0, lambda: self.set_status("Backend not reachable"))
-                # ===== MODIFICATION END: backend not running error =====
 
             except requests.exceptions.HTTPError as e:
-                # ===== MODIFICATION START: backend returned HTTP error =====
                 self.root.after(0, lambda: messagebox.showerror("Backend error", str(e)))
                 self.root.after(0, lambda: self.send_button.configure(state="normal", text="Find My Music"))
                 self.root.after(0, lambda: self.set_status("Backend error"))
-                # ===== MODIFICATION END: backend returned HTTP error =====
 
             except Exception as e:
                 self.root.after(0, lambda: messagebox.showerror("Error", str(e)))
